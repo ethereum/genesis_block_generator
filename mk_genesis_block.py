@@ -1,8 +1,15 @@
+#!/usr/bin/python
+import json, re
+import random
+import sys
 import bitcoin as b
 import sys
 import json
 import os
-import insight_grabbing
+try:
+    from urllib.request import build_opener
+except:
+    from urllib2 import build_opener
 
 # Timestamp of sale start: midnight CET Jul 22
 start = 1406066400
@@ -40,13 +47,71 @@ try:
 except:
     pass
 
+
+
+INSIGHT_ADDR = 'http://178.19.221.38:3000'
+
+
+# Makes a request to a given URL (first arg) and optional params (second arg)
+def make_request(*args):
+    opener = build_opener()
+    opener.addheaders = [('User-agent',
+                          'Mozilla/5.0'+str(random.randrange(1000000)))]
+    try:
+        return opener.open(*args).read().strip()
+    except Exception as e:
+        try:
+            p = e.read().strip()
+        except:
+            p = e
+        raise Exception(p)
+
+
+# Grab history from an insight server (if desired)
+def insight_history(a):
+    hashes = json.loads(make_request(INSIGHT_ADDR + '/api/addr/'+a))["transactions"]
+    o = []
+    for i in range(0, len(hashes), 10):
+        h = hashes[i:i+10]
+        t = json.loads(make_request(INSIGHT_ADDR + '/api/multitx/'+','.join(h)))
+        sys.stderr.write('Getting txs: %d\n' % i)
+        if isinstance(t, dict):
+            t = [t]
+        for tee in t:
+            for i, out in enumerate(tee["vout"]):
+                if a in out["scriptPubKey"]["addresses"]:
+                    o.append({"output": tee["txid"]+':'+str(i),
+                              "block_height": tee["confirmedIn"],
+                              "value": out["valueSat"]})
+    return o
+
+
+# Grab a block timestamp from an insight server (if desired)
+def insight_get_block_timestamp(a):
+    addrtail = ','.join([str(x) for x in a]) if isinstance(a, list) else str(a)
+    o = json.loads(make_request(INSIGHT_ADDR + '/api/blockheader-by-index/'+addrtail))
+    if isinstance(o, list):
+        return [x['time'] for x in o]
+    else:
+        return o['time']
+
+
+# Fetch a transaction from an insight server (if desired)
+def insight_fetchtx(a):
+    addrtail = ','.join(a) if isinstance(a, list) else a
+    return json.loads(make_request(INSIGHT_ADDR + '/api/rawmultitx/'+addrtail))
+
+# Get our network data grabbing methods either from BCI/blockr or from insight,
+# depending on which one the user prefers. Use --insight to use insight or
+# --insight 1.2.3.4:30303 to use one's own insight server (need the custom
+# batch-query-compatible version from http://github.com/vbuterin/insight-api )
 if '--insight' in sys.argv:
     ipport = (sys.argv+[None])[sys.argv.index('--insight') + 1]
     if ipport:
-        insight_grabbing.INSIGHT_ADDR = 'http://'+ipport
-    _fetchtx = insight_grabbing.fetchtx
-    _history = insight_grabbing.history
-    _get_block_timestamp = insight_grabbing.get_block_timestamp
+        INSIGHT_ADDR = 'http://'+ipport
+    _fetchtx = insight_fetchtx
+    _history = insight_history
+    _get_block_timestamp = insight_get_block_timestamp
 else:
     _fetchtx = b.blockr_fetchtx
     _history = b.history
@@ -70,7 +135,7 @@ def cache_method_factory(method, filename):
         return c[str(arg)]
     return new_method
 
-# Cached versions of the blockr.io or insight methods that we need
+# Cached versions of the BCI/blockr or insight methods that we need
 get_block_timestamp = cache_method_factory(_get_block_timestamp,
                                            'caches/blocktimestamps.json')
 fetchtx = cache_method_factory(_fetchtx, 'caches/fetchtx.json')
@@ -90,11 +155,12 @@ def get_txs_and_heights(outs):
                 txhashes.append(outs[j]['output'][:64])
                 fetched_heights.append(outs[j]['block_height'])
             else:
-                sys.stderr.write("Non-purchase tx found: %s\n" %
-                                 fetchtx(outs[j]['output'][:64]))
+                sys.stderr.write("Bad tx found (genesis output index not zero): %s\n" %
+                                 outs[j]['output'][:64])
         fetched_txs = fetchtx(txhashes)
-        assert len(fetched_txs) == len(txhashes)
+        assert len(fetched_txs) == len(txhashes) == len(fetched_heights)
         for h, tx, ht in zip(txhashes, fetched_txs, fetched_heights):
+            assert b.txhash(str(tx)) == h
             txs[h] = tx
             heights[h] = ht
         sys.stderr.write('Processed transactions: %d\n' % len(txs))
@@ -120,6 +186,13 @@ def list_purchases(obj):
                     "value": v,
                     "height": heights[h]
                 })
+            else:
+                sys.stderr.write("Bad tx found (not to exodus): %s\n" % h)
+        elif len(txouts) == 1:
+            sys.stderr.write("Bad tx found (single output): %s\n" % h)
+        else:
+            sys.stderr.write("Bad tx found (insufficient value): %s\n" % h)
+    sys.stderr.write('Gathered outputs, collecting block timestamps\n')
     # Determine the timestamp for every block height. We care about
     # the timestamp of the previous confirmed block before a transaction.
     # Save the results as a dictionary of transaction data
@@ -134,7 +207,7 @@ def list_purchases(obj):
             "value": _a["value"],
             "time": _b
         } for _a, _b in zip(subpq, t)])
-        sys.stderr.write('Gathered outputs: %d\n' % len(o))
+        sys.stderr.write('Collected timestamps: %d\n' % len(o))
     return o
 
 
