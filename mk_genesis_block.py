@@ -229,7 +229,7 @@ def evaluate_purchases(purchases):
         # Round to the nearest finney
         balance_to_add = (p["value"] * rate // 10**5) * 10**15
         balances[p["addr"]] = balances.get(p["addr"], 0) + balance_to_add
-    return balances
+    return {k: balances[k] for k in sorted(balances.keys())}
 
 
 # Compute a genesis block from purchase balances
