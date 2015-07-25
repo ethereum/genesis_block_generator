@@ -40,7 +40,7 @@ maximum = 150000000000
 caches = {}
 
 # Foundation address
-foundation_address = '1475af6efde6d1dffdc43875315ed046871322b1'
+foundation_address = 'f024ce280323d50b5f8fc2e7a25347f986834af2'
 
 try:
     os.mkdir('caches')
