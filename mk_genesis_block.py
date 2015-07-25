@@ -245,7 +245,7 @@ def mk_genesis_block(balances):
     return {
         "nonce": "0x0000000000000042",
         "timestamp": "0x00",
-        "difficulty": "0x1000000",
+        "difficulty": "0x80000",
         "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "extraData": "0x",
         "gasLimit": "0x1388000",
