@@ -118,6 +118,13 @@ else:
     _get_block_timestamp = b.get_block_timestamp
 
 
+# Grab the extra data command line argument
+if '--extradata' in sys.argv:
+    EXTRADATA = (sys.argv+[None])[sys.argv.index('--extradata') + 1].decode('hex')
+else:
+    EXTRADATA = ''
+
+
 # Cache methods that get networking data. Important since this script takes
 # a very long time, and will almost certainly be interrupted multiple times
 # while in progress
@@ -247,7 +254,7 @@ def mk_genesis_block(balances):
         "timestamp": "0x00",
         "difficulty": "0x80000",
         "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-        "extraData": "0x",
+        "extraData": "0x"+EXTRADATA.encode('hex'),
         "gasLimit": "0x1388000",
         "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "coinbase": "0x0000000000000000000000000000000000000000",
