@@ -120,7 +120,8 @@ else:
 
 # Grab the extra data command line argument
 if '--extradata' in sys.argv:
-    EXTRADATA = (sys.argv+[None])[sys.argv.index('--extradata') + 1].decode('hex')
+    d = (sys.argv+[None])[sys.argv.index('--extradata') + 1]
+    EXTRADATA = (d[2:] if d[:2] == '0x' else d).decode('hex')
 else:
     EXTRADATA = ''
 
