@@ -248,15 +248,15 @@ def mk_genesis_block(balances):
         "balance": str(total_purchased * 198 // 1000)
     }
     sys.stderr.write("Finished, total purchased: %d\n" % total_purchased)
-    sys.stderr.write("Foundation address: %s\n" % foundation_address)
+    sys.stderr.write("Foundation wallet creator address: %s\n" % foundation_address)
     sys.stderr.write("Foundation balance: %s\n" % (total_purchased * 198 // 1000))
     return {
         "nonce": "0x0000000000000042",
         "timestamp": "0x00",
-        "difficulty": "0xa0000",
+        "difficulty": "0x400000000",
         "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "extraData": "0x"+EXTRADATA.encode('hex'),
-        "gasLimit": "0x1388000",
+        "gasLimit": "0x1388",
         "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "coinbase": "0x0000000000000000000000000000000000000000",
         "alloc": o
