@@ -138,7 +138,21 @@ def cache_method_factory(method, filename):
                 caches[filename] = {}
         c = caches[filename]
         if str(arg) not in c:
-            c[str(arg)] = method(arg)
+            # Try to get the result five times
+            have_problem = False
+            for tried in range(4):
+                try:
+                    c[str(arg)] = method(arg)
+                    tried = 'done'
+                    break
+                except Exception:
+                    sys.stderr.write('API not returning data. Retrying\n')
+                    have_problem = True
+                    pass
+            if tried != 'done':
+                c[str(arg)] = method(arg)
+            elif have_problem:
+                sys.stderr.write('Data received, all good\n')
             json.dump(c, open(filename, 'w'))
         return c[str(arg)]
     return new_method
@@ -163,7 +177,7 @@ def get_txs_and_heights(outs):
                 txhashes.append(outs[j]['output'][:64])
                 fetched_heights.append(outs[j]['block_height'])
             else:
-                sys.stderr.write("Bad tx found (genesis output index not zero): %s\n" %
+                sys.stderr.write("Non-purchase tx found (genesis output index not zero): %s\n" %
                                  outs[j]['output'][:64])
         fetched_txs = fetchtx(txhashes)
         assert len(fetched_txs) == len(txhashes) == len(fetched_heights)
@@ -195,11 +209,11 @@ def list_purchases(obj):
                     "height": heights[h]
                 })
             else:
-                sys.stderr.write("Bad tx found (not to exodus): %s\n" % h)
+                sys.stderr.write("Non-purchase tx found (not to exodus): %s\n" % h)
         elif len(txouts) == 1:
-            sys.stderr.write("Bad tx found (single output): %s\n" % h)
+            sys.stderr.write("Non-purchase tx found (single output): %s\n" % h)
         else:
-            sys.stderr.write("Bad tx found (insufficient value): %s\n" % h)
+            sys.stderr.write("Non-purchase tx found (insufficient value): %s\n" % h)
     sys.stderr.write('Gathered outputs, collecting block timestamps\n')
     # Determine the timestamp for every block height. We care about
     # the timestamp of the previous confirmed block before a transaction.
