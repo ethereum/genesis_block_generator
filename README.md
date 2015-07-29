@@ -1,5 +1,7 @@
-# genesis_block_generator
+# Genesis block generator
 
-Run as:
+Run as follows:
 
-  $ python mk_genesis_block.py > genesis.json
+```bash
+$ python mk_genesis_block.py > genesis.json
+```
